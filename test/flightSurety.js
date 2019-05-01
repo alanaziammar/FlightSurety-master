@@ -21,12 +21,12 @@ contract('Flight Surety Tests', async (accounts) => {
     assert.equal(await config.flightSuretyData.isFunded.call(config.firstAirline), true, "Airline should be funded!");
 
     //await config.flightSuretyData.authorizeCaller(config.firstAirline);
-    //assert.equal(await config.flightSuretyData.isAuthorized.call(config.firstAirline), true, "Airline should be Authorized!");
+    assert.equal(await config.flightSuretyData.isAuthorized.call(config.firstAirline), true, "Airline should be Authorized!");
 
   });
 
   it('Only 1 active airline', async () => {
-    assert.equal(await config.flightSuretyData.getActiveAirlines.call(), BigNumber(1), "Airline count should be 1!");
+    assert.equal(await config.flightSuretyData.getActiveAirlines.call(), 1, "Airline count should be 1!");
   });
 
 
@@ -71,7 +71,7 @@ contract('Flight Surety Tests', async (accounts) => {
 
   });
 
-  /*
+  
   it('(airline) can register an Airline using registerAirline() but not funded yet', async () => {
     
     // ARRANGE
@@ -80,7 +80,7 @@ contract('Flight Surety Tests', async (accounts) => {
     // ACT
     try {
         let r = await config.flightSuretyApp.registerAirline.call(newAirline, {from: config.firstAirline});
-        console.log(r[0],r2[1]);
+        console.log(r[0],r[1]);
     }
     catch(e) {
         console.log(e);

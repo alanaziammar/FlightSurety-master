@@ -206,7 +206,7 @@ contract FlightSuretyData {
                                 address airline    
                             )
                             external
-                            requireIsFunded
+                            //requireIsFunded
                             //requireIsCallerAuthorized
                             requireIsOperational
                             returns(bool success, uint256 votes)
