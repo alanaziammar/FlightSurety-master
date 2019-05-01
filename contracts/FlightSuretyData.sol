@@ -14,6 +14,7 @@ contract FlightSuretyData {
     struct Airline {
         bool isRegistered;
         bool isFunded;
+        uint256 existingFund;
     }
 
     mapping(address => bool) private authorizedContracts;
@@ -41,7 +42,7 @@ contract FlightSuretyData {
         contractOwner = msg.sender;
         authorizedContracts[firstAirline] = true;
         activeAirlines = 1;
-        airlines[firstAirline] = Airline({isRegistered: true, isFunded: true});
+        airlines[firstAirline] = Airline({isRegistered: true, isFunded: false, existingFund: 0 ether});
     }
 
     /********************************************************************************************/
@@ -64,7 +65,7 @@ contract FlightSuretyData {
 
     modifier requireIsFunded()
     {
-        require(isFunded(msg.sender), "Airline is currently not funded");
+        require(airlines[msg.sender].isFunded, "Airline is currently not funded");
         _;  // All modifiers require an "_" which indicates where the function body will be added
     }
 
@@ -206,14 +207,15 @@ contract FlightSuretyData {
                                 address airline    
                             )
                             external
-                            //requireIsFunded
-                            //requireIsCallerAuthorized
+                            requireIsFunded
+                            requireIsCallerAuthorized
                             requireIsOperational
                             returns(bool success, uint256 votes)
     {
+        //require(isAirline(msg.sender), "Caller is not funded.");
         require(!airlines[airline].isRegistered, "Airline is already registered.");
         if(activeAirlines<4){
-            airlines[airline] = Airline({isRegistered: true, isFunded: false});
+            airlines[airline] = Airline({isRegistered: true, isFunded: false, existingFund: 0 ether});
             return (true, uint256(1));
         }
         else{
@@ -229,7 +231,7 @@ contract FlightSuretyData {
             airlineVotes.push(msg.sender);
 
             if (airlineVotes.length >= activeAirlines.div(2)) {
-                airlines[airline] = Airline({isRegistered: true, isFunded: false});
+                airlines[airline] = Airline({isRegistered: true, isFunded: false, existingFund: 0 ether});
                 uint256 _votes = uint256(airlineVotes.length);   
                 airlineVotes = new address[](0);
                 return (true, _votes);   
@@ -289,6 +291,12 @@ contract FlightSuretyData {
                             public
                             payable
     {
+        require(airlines[msg.sender].isRegistered, "Airline is not registered.");
+        airlines[msg.sender].existingFund = airlines[msg.sender].existingFund + msg.value;
+        if(airlines[msg.sender].existingFund>=10 ether){
+            airlines[msg.sender].isFunded = true;
+        }
+
     }
 
     function getFlightKey
