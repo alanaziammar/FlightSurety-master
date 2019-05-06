@@ -23,16 +23,10 @@ contract FlightSuretyApp {
     uint8 private constant STATUS_CODE_LATE_WEATHER = 30;
     uint8 private constant STATUS_CODE_LATE_TECHNICAL = 40;
     uint8 private constant STATUS_CODE_LATE_OTHER = 50;
+    uint256 private constant REFUND_PERCENTAGE = 150;
 
     address private contractOwner;          // Account used to deploy contract
 
-    struct Flight {
-        bool isRegistered;
-        uint8 statusCode;
-        uint256 updatedTimestamp;        
-        address airline;
-    }
-    mapping(bytes32 => Flight) private flights;
     FlightSuretyData fsd;
 
  
@@ -118,29 +112,44 @@ contract FlightSuretyApp {
     * @dev Add an airline to the registration queue
     *
     */
-    /*function addSale
-                                (
-                                    string id,
-                                    uint256 amount
-                                )
-                                external
-                                requireContractOwner
-    {
-        exerciseC6C.updateEmployee(
-                        id,
-                        amount,
-                        calculateBonus(amount)
-        );
-    } */
     function registerAirline
                             ( 
-                                address airline  
+                                address airline 
                             )
                             external
                             requireIsFunded
                             returns(bool success, uint256 votes)
     {
-        return fsd.registerAirline(airline);
+        return fsd.registerAirline(airline, msg.sender);
+    }
+
+    function fund
+                            (   
+                            )
+                            public
+                            payable
+    {
+        fsd.fund.value(msg.value)(msg.sender);
+    }
+
+    function buy
+                            ( 
+                                address airline,
+                                string flight,
+                                uint256 timestamp 
+                            )
+                            public
+                            payable
+    {
+        fsd.buy.value(msg.value)(msg.sender, airline, flight, timestamp);
+    }
+
+    function withdraw
+                            (  
+                            )
+                            public
+    {
+        fsd.pay(msg.sender);
     }
 
 
@@ -150,11 +159,14 @@ contract FlightSuretyApp {
     */  
     function registerFlight
                                 (
+                                    address _airline,
+                                    string _flight,
+                                    uint256 _timestamp
                                 )
                                 external
-                                pure
+                                //requireIsFunded
     {
-
+        fsd.registerFlight(_airline, _flight, _timestamp);            
     }
     
    /**
@@ -163,14 +175,25 @@ contract FlightSuretyApp {
     */  
     function processFlightStatus
                                 (
+                                    uint8 index,
                                     address airline,
                                     string memory flight,
                                     uint256 timestamp,
                                     uint8 statusCode
                                 )
                                 internal
-                                pure
     {
+        // Generate a unique key for storing the request
+        bytes32 key = keccak256(abi.encodePacked(index, airline, flight, timestamp));
+        oracleResponses[key].isOpen = false;
+
+        fsd.updateFlightStatus(airline, flight, timestamp, statusCode);
+
+        // Do something depending on the statusCode
+        if(statusCode == STATUS_CODE_LATE_AIRLINE){
+            fsd.creditInsurees(airline, flight, timestamp, REFUND_PERCENTAGE);
+        }
+
     }
 
 
@@ -182,17 +205,19 @@ contract FlightSuretyApp {
                             uint256 timestamp                            
                         )
                         external
+                        returns(uint8 _index)
     {
         uint8 index = getRandomIndex(msg.sender);
 
         // Generate a unique key for storing the request
-        bytes32 key = keccak256(abi.encodePacked(index, airline, flight, timestamp));
+        bytes32 key = keccak256(abi.encodePacked(index, airline, flight, timestamp)); 
         oracleResponses[key] = ResponseInfo({
                                                 requester: msg.sender,
                                                 isOpen: true
                                             });
 
         emit OracleRequest(index, airline, flight, timestamp);
+        return index;
     } 
 
 
@@ -205,7 +230,7 @@ contract FlightSuretyApp {
     uint256 public constant REGISTRATION_FEE = 1 ether;
 
     // Number of oracles that must respond for valid status
-    uint256 private constant MIN_RESPONSES = 3;
+    uint256 private constant MIN_RESPONSES = 1;
 
 
     struct Oracle {
@@ -271,8 +296,6 @@ contract FlightSuretyApp {
     }
 
 
-
-
     // Called by oracle when a response is available to an outstanding request
     // For the response to be accepted, there must be a pending request that is open
     // and matches one of the three Indexes randomly assigned to the oracle at the
@@ -286,11 +309,12 @@ contract FlightSuretyApp {
                             uint8 statusCode
                         )
                         external
+                        returns(uint256 _statusCode)
     {
         require((oracles[msg.sender].indexes[0] == index) || (oracles[msg.sender].indexes[1] == index) || (oracles[msg.sender].indexes[2] == index), "Index does not match oracle request");
 
 
-        bytes32 key = keccak256(abi.encodePacked(index, airline, flight, timestamp)); 
+        bytes32 key = keccak256(abi.encodePacked(index, airline, flight, timestamp));
         require(oracleResponses[key].isOpen, "Flight or timestamp do not match oracle request");
 
         oracleResponses[key].responses[statusCode].push(msg.sender);
@@ -303,8 +327,9 @@ contract FlightSuretyApp {
             emit FlightStatusInfo(airline, flight, timestamp, statusCode);
 
             // Handle flight status as appropriate
-            processFlightStatus(airline, flight, timestamp, statusCode);
+            processFlightStatus(index, airline, flight, timestamp, statusCode);
         }
+        return oracleResponses[key].responses[statusCode].length;
     }
 
 
@@ -345,6 +370,20 @@ contract FlightSuretyApp {
         return indexes;
     }
 
+    // Query the status of any flight
+    function viewFlightStatus
+                            (
+                                address airline,
+                                string flight,
+                                uint256 timestamp
+                            )
+                            external
+                            view
+                            returns(uint8)
+    {
+            return fsd.viewFlightStatus(airline, flight, timestamp);
+    }
+
     // Returns array of three non-duplicating integers from 0-9
     function getRandomIndex
                             (
@@ -372,6 +411,14 @@ contract FlightSuretyApp {
 contract FlightSuretyData {
     function isOperational() public view returns(bool);
     function isFunded(address airline) public view returns(bool);
-    function registerAirline(address airline) external returns(bool success, uint256 votes);
+    function registerAirline(address airline, address caller) external returns(bool success, uint256 votes);
     function getActiveAirlines() public view returns(uint256);
+    function registerFlight(address _airline, string _flight, uint256 _timestamp) external;
+    function updateFlightStatus(address airline, string flight, uint256 timestamp, uint8 statusCode) external;
+    function viewFlightStatus(address airline, string flight, uint256 timestamp) external view returns(uint8);
+    function fund(address caller) public payable;
+    function buy(address caller, address airline, string flight, uint256 timestamp) external payable;
+    function creditInsurees(address airline, string flight, uint256 timestamp, uint256 percentage) external;
+    function pay(address passenger) external;
+    //function getFlightDetails(address airline, string flight, uint256 timestamp) external returns(Flight flightDetails);
 }

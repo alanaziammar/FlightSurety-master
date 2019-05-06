@@ -43,6 +43,7 @@
     "webpack-node-externals": "1.7.2"
   },
   "dependencies": {
+    "ethereumjs-testrpc": "^6.0.3",
     "web3": "^1.0.0-beta.37"
   }
 }
