@@ -17,15 +17,17 @@ let accounts = [];
   accounts = accts;
 });*/
 
+
 web3.eth.getAccounts((error, accts) => {
     accounts = accts;
     for(let a=6; a<TEST_ORACLES_COUNT+6; a++) { 
-      flightSuretyApp.methods.registerOracle().send({from: accounts[a], value: 1000000000000000000}, (error, result) =>{
-      });
-      flightSuretyApp.methods.getMyIndexes().call({from: web3.eth.accounts[a]}, (error, result) =>{
-        //console.log(`Oracle Registered: ${result}`);
-        //callback(error, result);
-        console.log(accounts[a], result);
+      flightSuretyApp.methods.registerOracle().send({from: accounts[a], value: 1000000000000000000, gas:3000000}, (error, result) =>{
+        console.log(result, error);
+        flightSuretyApp.methods.getMyIndexes().call({from: web3.eth.accounts[a], gas:3000000}, (error, result) =>{
+          //console.log(`Oracle Registered: ${result}`);
+          //callback(error, result);
+          console.log(accounts[a], result, error);
+        });
       });
     }
   });
@@ -60,10 +62,6 @@ app.get('/api', (req, res) => {
     res.send({
       message: 'An API for use with your Dapp!'
     })
-});
-
-app.on('listening', function () {
-  console.log('We  are here first!');
 });
 
 export default app;
