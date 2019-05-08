@@ -11,15 +11,13 @@ web3.eth.defaultAccount = web3.eth.accounts[0];
 let flightSuretyApp = new web3.eth.Contract(FlightSuretyApp.abi, config.appAddress);
 let TEST_ORACLES_COUNT = 20;
 let accounts = [];
-initialize();
+//initialize();
 
 /*web3.eth.getAccounts((error, accts) => {
   accounts = accts;
 });*/
 
-initialize()
-  {
-    this.web3.eth.getAccounts((error, accts) => {
+web3.eth.getAccounts((error, accts) => {
     accounts = accts;
     for(let a=6; a<TEST_ORACLES_COUNT+6; a++) { 
       flightSuretyApp.methods.registerOracle().send({from: accounts[a], value: 1000000000000000000}, (error, result) =>{
@@ -30,9 +28,7 @@ initialize()
         console.log(accounts[a], result);
       });
     }
-  })
-
-  }
+  });
 
 
 /*
