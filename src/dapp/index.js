@@ -31,7 +31,35 @@ import './flightsurety.css';
             let airline = DOM.elid('airline-address').value;
             // Write transaction
             contract.registerAirline(airline, (error, result) => {
-                display('airlines', 'Register Airline', [ { label: 'Airline Registered', error: error, value: result} ]);
+                display('airlines', 'Register Airline', [ { label: 'Airline Registered', value: error? 'Failed '+error:'Success'} ]);
+            });
+        })
+
+        // User-submitted transaction
+        DOM.elid('fund-airline').addEventListener('click', () => {
+            let airline = DOM.elid('airline-address2').value;
+            // Write transaction
+            contract.fundAirline(airline, (error, result) => {
+                display('airlines', 'Fund Airline', [ { label: 'Airline Funded', value: error? 'Failed '+error:'Success'} ]);
+            });
+        })
+
+        // User-submitted transaction
+        DOM.elid('buy-insurance').addEventListener('click', () => {
+            let flight = DOM.elid('flight-number1').value;
+            let passenger = DOM.elid('passenger-address').value;
+            // Write transaction
+            contract.buyInsurance(flight, passenger, (error, result) => {
+                display('Passenger', 'Buy Insurance', [ { label: 'Insurance Bought', value: error? 'Failed '+error:'Success'} ]);
+            });
+        })
+
+        // User-submitted transaction
+        DOM.elid('withdraw-refunds').addEventListener('click', () => {
+            let passenger = DOM.elid('passenger-address1').value;
+            // Write transaction
+            contract.withdraw(passenger, (error, result) => {
+                display('Passenger', 'Withdraw Refunds', [ { label: 'Refunds Withdrawn', value: error? 'Failed '+error:'Success'} ]);
             });
         })
     
