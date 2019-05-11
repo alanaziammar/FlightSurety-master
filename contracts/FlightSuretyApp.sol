@@ -26,6 +26,7 @@ contract FlightSuretyApp {
     uint256 private constant REFUND_PERCENTAGE = 150;
 
     address private contractOwner;          // Account used to deploy contract
+    address[] airlineVotes = new address[](0);
 
     FlightSuretyData fsd;
 
@@ -120,7 +121,32 @@ contract FlightSuretyApp {
                             requireIsFunded
                             returns(bool success, uint256 votes)
     {
-        return fsd.registerAirline(airline, msg.sender);
+        require(!fsd.isAirline(airline), "Airline is already registered.");
+        uint256 aa = fsd.getActiveAirlines();
+        if(aa<4){
+            return fsd.registerAirline(airline, msg.sender, 1);
+        }
+        else{
+            bool isDuplicate = false;
+            for(uint c=0; c<airlineVotes.length; c++) {
+                if (airlineVotes[c] == msg.sender) {
+                    isDuplicate = true;
+                    break;
+                }
+            }
+            require(!isDuplicate, "Caller has already called this function.");
+
+            airlineVotes.push(msg.sender);
+
+            if (airlineVotes.length >= aa.div(2)) {
+                uint256 _votes = uint256(airlineVotes.length);   
+                airlineVotes = new address[](0); 
+                return fsd.registerAirline(airline, msg.sender, _votes);
+            }
+            else{
+                return (false, uint256(airlineVotes.length));  
+            }
+        }
     }
 
     function fund
@@ -129,6 +155,8 @@ contract FlightSuretyApp {
                             public
                             payable
     {
+        require(fsd.isAirline(msg.sender), "Airline is not registered.");
+        require(msg.value>=10 ether, "Insufficient Funds.");
         fsd.fund.value(msg.value)(msg.sender);
     }
 
@@ -411,7 +439,7 @@ contract FlightSuretyApp {
 contract FlightSuretyData {
     function isOperational() public view returns(bool);
     function isFunded(address airline) public view returns(bool);
-    function registerAirline(address airline, address caller) external returns(bool success, uint256 votes);
+    function registerAirline(address airline, address caller, uint256 _votes) external returns(bool success, uint256 votes);
     function getActiveAirlines() public view returns(uint256);
     function registerFlight(address _airline, string _flight, uint256 _timestamp) external;
     function updateFlightStatus(address airline, string flight, uint256 timestamp, uint8 statusCode) external;
@@ -420,5 +448,6 @@ contract FlightSuretyData {
     function buy(address caller, address airline, string flight, uint256 timestamp) external payable;
     function creditInsurees(address airline, string flight, uint256 timestamp, uint256 percentage) external;
     function pay(address passenger) external;
+    function isAirline(address airline) public view returns(bool);
     //function getFlightDetails(address airline, string flight, uint256 timestamp) external returns(Flight flightDetails);
 }

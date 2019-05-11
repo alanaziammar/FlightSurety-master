@@ -376,8 +376,13 @@ contract('Flight Surety Tests', async (accounts) => {
               });
 
               var event1 = config.flightSuretyData.InsureesCredited();
-              await event1.watch((err, res) => {
+              await event1.watch((err, res), async() => {
                 console.log(`\n\nInsurees Credited: Count: ${res.args.arrayLength.toNumber()}, airline:  ${res.args.airline}, flight:  ${res.args.flight}, timestamp: ${res.args.timestamp.toNumber()}`);
+                await config.flightSuretyApp.withdraw({from: passenger});
+                var event = config.flightSuretyData.PassengerPaid();
+                await event.watch((err, result) => {
+                  console.log(`\n\n FSD: Passenger Paid: passenger: ${result.args.passenger}, amount: ${result.args.amount.toNumber()}`);
+                });
             });
           }
 
@@ -405,11 +410,7 @@ contract('Flight Surety Tests', async (accounts) => {
 
     //let balanceBefore = await web3.eth.getBalance(passenger);
     //console.log("Balance before = ", balanceBefore);
-    await config.flightSuretyApp.withdraw({from: passenger});
-    var event = config.flightSuretyData.PassengerPaid();
-    await event.watch((err, result) => {
-      console.log(`\n\n FSD: Passenger Paid: passenger: ${result.args.passenger}, amount: ${result.args.amount.toNumber()}`);
-    });
+    
     //let balanceAfter = await web3.eth.getBalance(passenger);
     //console.log("Balance after = ", balanceAfter);
     

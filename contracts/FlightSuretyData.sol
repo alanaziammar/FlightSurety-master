@@ -293,7 +293,8 @@ contract FlightSuretyData {
     function registerAirline
                             ( 
                                 address airline,
-                                address caller   
+                                address caller,
+                                uint256 _votes  
                             )
                             external
                             //requireIsFunded  already checked at the app contract
@@ -301,35 +302,9 @@ contract FlightSuretyData {
                             requireIsOperational
                             returns(bool success, uint256 votes)
     {
-        require(!airlines[airline].isRegistered, "Airline is already registered.");
-        if(activeAirlines<4){
-            airlines[airline] = Airline({isRegistered: true, isFunded: false, existingFund: 0 ether});
-            emit AirlineRegistered(airline, uint256(1));
-            return (true, uint256(1));
-        }
-        else{
-            bool isDuplicate = false;
-            for(uint c=0; c<airlineVotes.length; c++) {
-                if (airlineVotes[c] == caller) {
-                    isDuplicate = true;
-                    break;
-                }
-            }
-            require(!isDuplicate, "Caller has already called this function.");
-
-            airlineVotes.push(caller);
-
-            if (airlineVotes.length >= activeAirlines.div(2)) {
-                airlines[airline] = Airline({isRegistered: true, isFunded: false, existingFund: 0 ether});
-                uint256 _votes = uint256(airlineVotes.length);   
-                airlineVotes = new address[](0);
-                emit AirlineRegistered(airline, _votes);
-                return (true, _votes);   
-            }
-            else{
-                return (false, uint256(airlineVotes.length));  
-            }
-        }
+        airlines[airline] = Airline({isRegistered: true, isFunded: false, existingFund: 0 ether});
+        emit AirlineRegistered(airline, _votes);
+        return (true, _votes);
     }
 
 
@@ -432,16 +407,12 @@ contract FlightSuretyData {
                             requireIsCallerAuthorized
                             requireIsOperational
     {
-        require(airlines[caller].isRegistered, "Airline is not registered.");
         airlines[caller].existingFund = airlines[caller].existingFund.add(msg.value);
-        if(airlines[caller].existingFund>=10 ether){
-            if(!airlines[caller].isFunded){
-                airlines[caller].isFunded = true;
-                activeAirlines = activeAirlines.add(1);
-                emit AirlineActivated(caller, airlines[caller].existingFund);
-            }
+        if(!airlines[caller].isFunded){
+            airlines[caller].isFunded = true;
+            activeAirlines = activeAirlines.add(1);
+            emit AirlineActivated(caller, airlines[caller].existingFund);
         }
-
     }
 
     /**
